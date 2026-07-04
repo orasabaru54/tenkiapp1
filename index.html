@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>天気アプリ</title>
+<style>
+  :root{
+    --bg-1: #4facfe;
+    --bg-2: #00c6ff;
+    --card-bg: rgba(255,255,255,0.14);
+    --card-border: rgba(255,255,255,0.35);
+    --text: #ffffff;
+    --sub-text: rgba(255,255,255,0.78);
+    --accent: #ffd166;
+  }
+  *{ box-sizing: border-box; }
+  html,body{ height:100%; margin:0; }
+  body{
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, sans-serif;
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding: 24px 16px;
+    background: linear-gradient(160deg, var(--bg-1) 0%, var(--bg-2) 55%, #0f2027 130%);
+    background-attachment: fixed;
+    color: var(--text);
+    transition: background 0.6s ease;
+  }
+  .app{
+    width:100%;
+    max-width: 460px;
+  }
+  .header{
+    text-align:center;
+    margin-bottom: 20px;
+  }
+  .header h1{
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    margin: 0 0 4px;
+    text-shadow: 0 2px 12px rgba(0,0,0,0.25);
+  }
+  .header p{
+    margin:0;
+    font-size: 13px;
+    color: var(--sub-text);
+  }
+  .city-tabs{
+    display:flex;
+    gap:8px;
+    background: rgba(255,255,255,0.12);
+    padding:6px;
+    border-radius: 16px;
+    margin-bottom: 20px;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.2);
+  }
+  .city-tabs button{
+    flex:1;
+    border:none;
+    background: transparent;
+    color: var(--sub-text);
+    padding: 11px 8px;
+    font-size: 15px;
+    font-weight: 600;
+    border-radius: 12px;
+    cursor:pointer;
+    transition: all 0.25s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .city-tabs button.active{
+    background: rgba(255,255,255,0.95);
+    color: #0f6fb0;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.2);
+  }
+  .card{
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 28px;
+    padding: 32px 24px;
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+    position: relative;
+    overflow:hidden;
+    min-height: 320px;
+  }
+  .card::before{
+    content:"";
+    position:absolute;
+    top:-40%; right:-30%;
+    width:220px; height:220px;
+    background: radial-gradient(circle, rgba(255,255,255,0.25), transparent 70%);
+    pointer-events:none;
+  }
+  .state{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    min-height: 256px;
+    gap: 12px;
+    text-align:center;
+  }
+  .spinner{
+    width:36px; height:36px;
+    border: 3px solid rgba(255,255,255,0.3);
+    border-top-color: #fff;
+    border-radius:50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin{ to{ transform: rotate(360deg); } }
+  .state.error{ color: #ffe0e0; }
+  .retry-btn{
+    margin-top: 6px;
+    padding: 8px 18px;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.4);
+    background: rgba(255,255,255,0.15);
+    color:#fff;
+    font-size:14px;
+    cursor:pointer;
+  }
+  .content{ position:relative; z-index:1; }
+  .location{
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    margin-bottom: 6px;
+  }
+  .location .city-name{
+    font-size: 20px;
+    font-weight: 700;
+  }
+  .location .updated{
+    font-size: 11px;
+    color: var(--sub-text);
+  }
+  .main-weather{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap: 18px;
+    margin: 18px 0 8px;
+  }
+  .emoji{
+    font-size: 84px;
+    line-height:1;
+    filter: drop-shadow(0 6px 10px rgba(0,0,0,0.25));
+  }
+  .temp-block{
+    text-align:left;
+  }
+  .temp{
+    font-size: 60px;
+    font-weight: 700;
+    line-height:1;
+    letter-spacing: -0.02em;
+  }
+  .temp sup{
+    font-size: 28px;
+    font-weight: 600;
+    vertical-align: super;
+  }
+  .condition{
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--sub-text);
+    margin-top: 4px;
+  }
+  .feels-like{
+    text-align:center;
+    font-size: 13px;
+    color: var(--sub-text);
+    margin-bottom: 20px;
+  }
+  .stats{
+    display:grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-top: 6px;
+  }
+  .stat{
+    background: rgba(255,255,255,0.12);
+    border: 1px solid rgba(255,255,255,0.18);
+    border-radius: 14px;
+    padding: 12px 6px;
+    text-align:center;
+  }
+  .stat .label{
+    font-size: 11px;
+    color: var(--sub-text);
+    margin-bottom: 4px;
+  }
+  .stat .value{
+    font-size: 16px;
+    font-weight: 700;
+  }
+  .stat .value .unit{
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--sub-text);
+    margin-left: 1px;
+  }
+  footer{
+    text-align:center;
+    margin-top: 16px;
+    font-size: 11px;
+    color: rgba(255,255,255,0.55);
+  }
+  footer a{
+    color: rgba(255,255,255,0.75);
+  }
+
+  @media (max-width: 380px){
+    .emoji{ font-size: 68px; }
+    .temp{ font-size: 50px; }
+    .card{ padding: 26px 18px; }
+  }
+</style>
+</head>
+<body>
+  <div class="app">
+    <div class="header">
+      <h1>🌤️ 天気アプリ</h1>
+      <p>wttr.in で今日の天気をチェック</p>
+    </div>
+
+    <div class="city-tabs" id="cityTabs">
+      <button data-city="takamatsu" class="active">高松</button>
+      <button data-city="tokyo">東京</button>
+      <button data-city="osaka">大阪</button>
+    </div>
+
+    <div class="card" id="card">
+      <div class="state" id="loadingState">
+        <div class="spinner"></div>
+        <div>読み込み中...</div>
+      </div>
+    </div>
+
+    <footer>データ提供: wttr.in</footer>
+  </div>
+
+<script>
+(function(){
+  const CITIES = {
+    takamatsu: { name: "高松", lat: 34.34, lon: 134.05 },
+    tokyo:     { name: "東京", lat: 35.6762, lon: 139.6503 },
+    osaka:     { name: "大阪", lat: 34.6937, lon: 135.5023 }
+  };
+
+  // wttr.in (World Weather Online) weather code -> { emoji, label }
+  const WEATHER_CODE_MAP = {
+    113: { emoji: "☀️", label: "晴れ" },
+    116: { emoji: "⛅", label: "晴れ時々くもり" },
+    119: { emoji: "☁️", label: "くもり" },
+    122: { emoji: "☁️", label: "どんより" },
+    143: { emoji: "🌫️", label: "霧" },
+    176: { emoji: "🌦️", label: "にわか雨の可能性" },
+    179: { emoji: "🌨️", label: "小雪の可能性" },
+    182: { emoji: "🌨️", label: "みぞれの可能性" },
+    185: { emoji: "🌧️", label: "着氷性の霧雨の可能性" },
+    200: { emoji: "⛈️", label: "雷雨の可能性" },
+    227: { emoji: "❄️", label: "地吹雪" },
+    230: { emoji: "❄️", label: "吹雪" },
+    248: { emoji: "🌫️", label: "霧" },
+    260: { emoji: "🌫️", label: "着氷性の霧" },
+    263: { emoji: "🌦️", label: "小雨" },
+    266: { emoji: "🌦️", label: "霧雨" },
+    281: { emoji: "🌧️", label: "着氷性の霧雨" },
+    284: { emoji: "🌧️", label: "強い着氷性の霧雨" },
+    293: { emoji: "🌦️", label: "小雨" },
+    296: { emoji: "🌧️", label: "小雨" },
+    299: { emoji: "🌧️", label: "雨" },
+    302: { emoji: "🌧️", label: "雨" },
+    305: { emoji: "🌧️", label: "大雨" },
+    308: { emoji: "🌧️", label: "大雨" },
+    311: { emoji: "🌧️", label: "着氷性の雨" },
+    314: { emoji: "🌧️", label: "強い着氷性の雨" },
+    317: { emoji: "🌨️", label: "みぞれ" },
+    320: { emoji: "🌨️", label: "強いみぞれ" },
+    323: { emoji: "🌨️", label: "小雪" },
+    326: { emoji: "🌨️", label: "小雪" },
+    329: { emoji: "🌨️", label: "雪" },
+    332: { emoji: "🌨️", label: "雪" },
+    335: { emoji: "❄️", label: "大雪" },
+    338: { emoji: "❄️", label: "大雪" },
+    350: { emoji: "🧊", label: "あられ" },
+    353: { emoji: "🌦️", label: "にわか雨" },
+    356: { emoji: "🌧️", label: "強いにわか雨" },
+    359: { emoji: "⛈️", label: "激しいにわか雨" },
+    362: { emoji: "🌨️", label: "にわかみぞれ" },
+    365: { emoji: "🌨️", label: "強いにわかみぞれ" },
+    368: { emoji: "🌨️", label: "にわか雪" },
+    371: { emoji: "❄️", label: "強いにわか雪" },
+    374: { emoji: "🧊", label: "にわかあられ" },
+    377: { emoji: "🧊", label: "強いにわかあられ" },
+    386: { emoji: "⛈️", label: "雷雨" },
+    389: { emoji: "⛈️", label: "激しい雷雨" },
+    392: { emoji: "⛈️", label: "雷雪" },
+    395: { emoji: "⛈️", label: "激しい雷雪" }
+  };
+
+  function getWeatherInfo(code){
+    return WEATHER_CODE_MAP[code] || { emoji: "❓", label: "不明" };
+  }
+
+  const cardEl = document.getElementById("card");
+  const tabsEl = document.getElementById("cityTabs");
+  let currentCity = "takamatsu";
+  let requestToken = 0;
+
+  function renderLoading(){
+    cardEl.innerHTML = `
+      <div class="state" id="loadingState">
+        <div class="spinner"></div>
+        <div>読み込み中...</div>
+      </div>
+    `;
+  }
+
+  function renderError(message){
+    cardEl.innerHTML = `
+      <div class="state error">
+        <div style="font-size:40px;">⚠️</div>
+        <div>${message}</div>
+        <button class="retry-btn" id="retryBtn">再読み込み</button>
+      </div>
+    `;
+    const retryBtn = document.getElementById("retryBtn");
+    if (retryBtn) retryBtn.addEventListener("click", () => loadCity(currentCity));
+  }
+
+  function renderWeather(city, data){
+    const current = data.current_condition[0];
+    const today = data.weather[0];
+    const info = getWeatherInfo(Number(current.weatherCode));
+    const updatedStr = new Date().toLocaleString("ja-JP", { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" });
+
+    const maxT = today ? Math.round(today.maxtempC) : null;
+    const minT = today ? Math.round(today.mintempC) : null;
+
+    cardEl.innerHTML = `
+      <div class="content">
+        <div class="location">
+          <div class="city-name">${city.name}</div>
+          <div class="updated">${updatedStr} 更新</div>
+        </div>
+        <div class="main-weather">
+          <div class="emoji">${info.emoji}</div>
+          <div class="temp-block">
+            <div class="temp">${Math.round(current.temp_C)}<sup>°C</sup></div>
+            <div class="condition">${info.label}</div>
+          </div>
+        </div>
+        <div class="feels-like">体感温度 ${Math.round(current.FeelsLikeC)}°C</div>
+        <div class="stats">
+          <div class="stat">
+            <div class="label">最高 / 最低</div>
+            <div class="value">${maxT !== null ? maxT : "--"}° / ${minT !== null ? minT : "--"}°</div>
+          </div>
+          <div class="stat">
+            <div class="label">湿度</div>
+            <div class="value">${Math.round(current.humidity)}<span class="unit">%</span></div>
+          </div>
+          <div class="stat">
+            <div class="label">風速</div>
+            <div class="value">${Math.round(current.windspeedKmph)}<span class="unit">km/h</span></div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  async function loadCity(cityKey){
+    currentCity = cityKey;
+    const city = CITIES[cityKey];
+    const token = ++requestToken;
+    renderLoading();
+
+    const url = `https://wttr.in/${city.lat},${city.lon}?format=j1`;
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+    try {
+      const res = await fetch(url, { signal: controller.signal });
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      const data = await res.json();
+      if (token !== requestToken) return; // stale response, ignore
+      renderWeather(city, data);
+    } catch (err) {
+      if (token !== requestToken) return;
+      const message = err.name === "AbortError"
+        ? "接続がタイムアウトしました。通信環境を確認してください。"
+        : "天気データの取得に失敗しました。通信環境を確認してください。";
+      renderError(message);
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  }
+
+  tabsEl.addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-city]");
+    if (!btn) return;
+    tabsEl.querySelectorAll("button").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    loadCity(btn.dataset.city);
+  });
+
+  loadCity(currentCity);
+})();
+</script>
+</body>
+</html>
